@@ -1,0 +1,14 @@
+{
+  "name": "ignitespot-bot",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@slack/bolt": "^3.0.0",
+    "axios": "^1.13.2",
+    "dotenv": "^16.0.0"
+  }
+}
