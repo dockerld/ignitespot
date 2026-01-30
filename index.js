@@ -1,12 +1,13 @@
 import pkg from "@slack/bolt";
 import express from "express";
-import { logEnvStatus } from "./lib/env.js";
+import { logEnvStatus, SUPPORT_TICKET_WEBHOOK_SECRET } from "./lib/env.js";
 import { registerSlackHandlers } from "./lib/slack/handlers.js";
 import { warmCompanyCache } from "./lib/integrations/hubspot.js";
 import { warmDoubleClientCache } from "./lib/integrations/double.js";
 import { warmAirtableCache } from "./lib/integrations/airtable.js";
 import { handleAirtableWebhook } from "./lib/webhooks/airtable.js";
 import { handleHubSpotWebhook } from "./lib/webhooks/hubspot.js";
+import { handleSupportTicketWebhook } from "./lib/webhooks/supportTicket.js";
 
 const { App, ExpressReceiver } = pkg;
 
@@ -164,6 +165,25 @@ const app = new App({
   receiver,
   logLevel: "debug",
 });
+
+// Support ticket webhook (from Google Apps Script)
+receiver.router.post(
+  "/webhooks/support-ticket",
+  express.json({ limit: "1mb" }),
+  async (req, res) => {
+    try {
+      const result = await handleSupportTicketWebhook(req.body, req.headers, {
+        slackClient: app.client,
+        secret: SUPPORT_TICKET_WEBHOOK_SECRET,
+      });
+      res.status(200).json({ status: "ok", ...result });
+    } catch (err) {
+      const status = err?.statusCode || 500;
+      console.error("❌ Support ticket webhook error:", err?.message || err);
+      res.status(status).json({ status: "error" });
+    }
+  }
+);
 
 app.error((err) => {
   console.error("❌ Bolt error:", err);
