@@ -1,6 +1,10 @@
 import pkg from "@slack/bolt";
 import express from "express";
-import { logEnvStatus, SUPPORT_TICKET_WEBHOOK_SECRET } from "./lib/env.js";
+import {
+  logEnvStatus,
+  SUPPORT_TICKET_WEBHOOK_SECRET,
+  PROPOSAL_CHANGE_WEBHOOK_SECRET,
+} from "./lib/env.js";
 import { registerSlackHandlers } from "./lib/slack/handlers.js";
 import { warmCompanyCache } from "./lib/integrations/hubspot.js";
 import { warmDoubleClientCache } from "./lib/integrations/double.js";
@@ -8,6 +12,7 @@ import { warmAirtableCache } from "./lib/integrations/airtable.js";
 import { handleAirtableWebhook } from "./lib/webhooks/airtable.js";
 import { handleHubSpotWebhook } from "./lib/webhooks/hubspot.js";
 import { handleSupportTicketWebhook } from "./lib/webhooks/supportTicket.js";
+import { handleProposalChangeStatusWebhook } from "./lib/webhooks/proposalChangeStatus.js";
 
 const { App, ExpressReceiver } = pkg;
 
@@ -180,6 +185,25 @@ receiver.router.post(
     } catch (err) {
       const status = err?.statusCode || 500;
       console.error("❌ Support ticket webhook error:", err?.message || err);
+      res.status(status).json({ status: "error" });
+    }
+  }
+);
+
+// Proposal change status webhook (from HubSpot workflow)
+receiver.router.post(
+  "/webhooks/proposal-change-status",
+  express.json({ limit: "1mb" }),
+  async (req, res) => {
+    try {
+      const result = await handleProposalChangeStatusWebhook(req.body, req.headers, {
+        slackClient: app.client,
+        secret: PROPOSAL_CHANGE_WEBHOOK_SECRET,
+      });
+      res.status(200).json({ status: "ok", ...result });
+    } catch (err) {
+      const status = err?.statusCode || 500;
+      console.error("❌ Proposal change webhook error:", err?.message || err);
       res.status(status).json({ status: "error" });
     }
   }
