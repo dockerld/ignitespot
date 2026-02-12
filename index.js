@@ -39,7 +39,9 @@ logEnvStatus();
 
 const receiver = new ExpressReceiver({
   signingSecret: process.env.SLACK_SIGNING_SECRET,
-  processBeforeResponse: true,
+  // This app runs as a long-lived server, so Slack interaction acks
+  // should be flushed immediately to avoid modal timeout banners.
+  processBeforeResponse: false,
 });
 
 // Log all HTTP traffic
@@ -168,7 +170,7 @@ receiver.router.post(
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   receiver,
-  logLevel: "debug",
+  logLevel: "info",
 });
 
 // Support ticket webhook (from Google Apps Script)
