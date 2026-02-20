@@ -17,7 +17,7 @@ import { handleProposalChangeStatusWebhook } from "./lib/webhooks/proposalChange
 const { App, ExpressReceiver } = pkg;
 
 /**
- * IgniteSpot Bot
+ * Ignite BlazeBot
  *
  * Slack:
  * - Socket Mode: OFF
@@ -232,7 +232,7 @@ registerSlackHandlers(app);
 (async () => {
   const port = process.env.PORT || 3000;
   await app.start(port);
-  console.log(`⚡️ IgniteSpot Bot running on port ${port}`);
+  console.log(`⚡️ Ignite BlazeBot running on port ${port}`);
   console.log("Health check: http://localhost:3000/healthz");
 
   warmCompanyCache();
