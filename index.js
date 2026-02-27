@@ -4,6 +4,7 @@ import {
   logEnvStatus,
   SUPPORT_TICKET_WEBHOOK_SECRET,
   PROPOSAL_CHANGE_WEBHOOK_SECRET,
+  QBO_INVITE_WEBHOOK_SECRET,
 } from "./lib/env.js";
 import { registerSlackHandlers } from "./lib/slack/handlers.js";
 import { warmCompanyCache } from "./lib/integrations/hubspot.js";
@@ -13,6 +14,7 @@ import { handleAirtableWebhook } from "./lib/webhooks/airtable.js";
 import { handleHubSpotWebhook } from "./lib/webhooks/hubspot.js";
 import { handleSupportTicketWebhook } from "./lib/webhooks/supportTicket.js";
 import { handleProposalChangeStatusWebhook } from "./lib/webhooks/proposalChangeStatus.js";
+import { handleQboInviteWebhook } from "./lib/webhooks/qboInvite.js";
 
 const { App, ExpressReceiver } = pkg;
 
@@ -206,6 +208,25 @@ receiver.router.post(
     } catch (err) {
       const status = err?.statusCode || 500;
       console.error("❌ Proposal change webhook error:", err?.message || err);
+      res.status(status).json({ status: "error" });
+    }
+  }
+);
+
+// QBO invite webhook (from Google Apps Script)
+receiver.router.post(
+  "/webhooks/qbo-invite",
+  express.json({ limit: "1mb" }),
+  async (req, res) => {
+    try {
+      const result = await handleQboInviteWebhook(req.body, req.headers, {
+        slackClient: app.client,
+        secret: QBO_INVITE_WEBHOOK_SECRET,
+      });
+      res.status(200).json({ status: "ok", ...result });
+    } catch (err) {
+      const status = err?.statusCode || 500;
+      console.error("❌ QBO invite webhook error:", err?.message || err);
       res.status(status).json({ status: "error" });
     }
   }
