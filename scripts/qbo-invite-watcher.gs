@@ -157,7 +157,7 @@ function qboLog(event, companyName, status, details) {
 }
 
 // ============================================================
-// QBO Invite Watcher (new)
+// QBO Invite Watcher
 // ============================================================
 function watchQboInvites() {
   var threads = GmailApp.search(QBO_GMAIL_QUERY, 0, 10);
@@ -180,20 +180,18 @@ function watchQboInvites() {
         var parsed = parseQboInviteEmail(message);
         if (!parsed) {
           qboLog("Parse", "", "Skipped", "Could not parse: " + message.getSubject());
+          message.markRead();
           continue;
         }
-        qboLog("Parse", parsed.companyName, "OK", "sender=" + parsed.senderName + " link=" + (parsed.inviteLink ? "yes" : "no"));
-        // DRY RUN — log only, don't post to Slack yet
-        // Uncomment the block below and remove this line when ready to go live
-        qboLog("DryRun", parsed.companyName, "Skipped", "Would send webhook (dry run)");
-        message.markRead();
-        // var success = postQboWebhook(parsed);
-        // if (success) {
-        //   message.markRead();
-        //   qboLog("Webhook", parsed.companyName, "Sent", "Marked as read");
-        // } else {
-        //   qboLog("Webhook", parsed.companyName, "Failed", "Webhook returned error");
-        // }
+        qboLog("Parse", parsed.companyName, "OK", "sender=" + parsed.senderName + " email=" + parsed.senderEmail + " link=" + (parsed.inviteLink ? "yes" : "no"));
+
+        var success = postQboWebhook(parsed);
+        if (success) {
+          message.markRead();
+          qboLog("Webhook", parsed.companyName, "Sent", "Marked as read");
+        } else {
+          qboLog("Webhook", parsed.companyName, "Failed", "Webhook returned error");
+        }
       } catch (err) {
         qboLog("Error", "", "Error", err.message);
         Logger.log("Error processing QBO invite: " + err.message);
@@ -208,7 +206,6 @@ function parseQboInviteEmail(message) {
   var plainBody = message.getPlainBody() || "";
 
   // Extract company name from subject
-  // Format: "[QBO@IgniteSpot.com] Seaside Learning Academy LLC has invited you to use QuickBooks Accountant"
   var companyName = "";
   var subjectMatch = subject.match(/\]\s*(.+?)\s+has invited you/i);
   if (subjectMatch) {
@@ -220,11 +217,37 @@ function parseQboInviteEmail(message) {
     return null;
   }
 
+  // Extract sender email from HTML body (mailto link or inline email)
+  var senderEmail = "";
+  var emailFromHref = body.match(/href=["']mailto:([^"']+)["']/i);
+  if (emailFromHref) {
+    senderEmail = emailFromHref[1].trim();
+  }
+
+  if (!senderEmail) {
+    var emailFromBody = plainBody.match(/([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})\s+has invited you/i);
+    if (emailFromBody) {
+      senderEmail = emailFromBody[1].trim();
+    }
+  }
+
+  if (!senderEmail) {
+    var anyEmail = body.match(/([a-zA-Z0-9._%+\-]+@(?!intuit|quickbooks)[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/i);
+    if (anyEmail) {
+      senderEmail = anyEmail[1].trim();
+    }
+  }
+
   // Extract sender name from body
   var senderName = "";
   var senderMatch = plainBody.match(/^(.+?)\s+has invited you/m);
   if (senderMatch) {
     senderName = senderMatch[1].trim();
+    // If sender name is just an email, clean it up
+    if (senderName.indexOf("@") > -1) {
+      senderName = senderName.split("@")[0].replace(/[._]/g, " ");
+      senderName = senderName.replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+    }
   }
 
   // Extract invite link from HTML body
@@ -264,7 +287,9 @@ function parseQboInviteEmail(message) {
   return {
     companyName: companyName,
     senderName: senderName,
+    senderEmail: senderEmail,
     inviteLink: inviteLink,
+    inviteType: "qbo",
     bodyText: bodyText,
   };
 }
