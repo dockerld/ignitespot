@@ -1,5 +1,3 @@
-/** @OnlyCurrentDoc */
-
 // ============================================================
 // Configuration
 // ============================================================
@@ -9,7 +7,7 @@ var SUPPORT_WEBHOOK_SECRET = "uyfnskvoigwklfpqlsnvpiouanpingiscool";
 var SUPPORT_SLACK_CHANNEL_ID = "C05BY7CNQ1M";
 
 var QBO_WEBHOOK_URL = BASE_URL + "/webhooks/qbo-invite";
-var QBO_WEBHOOK_SECRET = ""; // must match QBO_INVITE_WEBHOOK_SECRET in .env
+var QBO_WEBHOOK_SECRET = "qbo-inv-x7k9mR4pW2vL8nT3";
 var QBO_GMAIL_QUERY = 'subject:"has invited you to use QuickBooks Accountant" is:unread';
 
 var QBO_LOG_SPREADSHEET_ID = "1iy-H4CQCcmJmU7EZQOvZhsdloNv07MZTfP5fRIXqB6c";
@@ -271,6 +269,16 @@ function parseQboInviteEmail(message) {
   if (!inviteLink) {
     linkMatch = body.match(
       /href=["'](https?:\/\/[^"']*intuit\.com[^"']*(?:accept|invite|connect)[^"']*)["']/i
+    );
+    if (linkMatch) {
+      inviteLink = linkMatch[1];
+    }
+  }
+
+  // Intuit email tracking links (elink.prd.intuit.com)
+  if (!inviteLink) {
+    linkMatch = body.match(
+      /href=["'](https?:\/\/elink\.prd\.intuit\.com[^"']*)["']/i
     );
     if (linkMatch) {
       inviteLink = linkMatch[1];
